@@ -2,6 +2,7 @@ package com.mihan.libraryApp.libraryApp.controller;
 
 
 import com.mihan.libraryApp.libraryApp.dto.BorrowRequestDTO;
+import com.mihan.libraryApp.libraryApp.dto.LoginRequestDTO;
 import com.mihan.libraryApp.libraryApp.dto.ReturnBookDTO;
 import com.mihan.libraryApp.libraryApp.model.BorrowingRecords;
 import com.mihan.libraryApp.libraryApp.model.User;
@@ -22,6 +23,7 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+
     @GetMapping
     public List<User> getAllUsers() {
         return userService.getAllUsers();
@@ -33,7 +35,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> loginUser(@RequestBody User loginRequest){
+    public ResponseEntity<?> loginUser(@RequestBody LoginRequestDTO loginRequest){
         Optional<User> user = userService.logInUser(loginRequest.getEmail(),loginRequest.getPassword());
 
         if(user.isPresent()){
@@ -60,6 +62,7 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     public String deleteUser(@PathVariable Long id) {
+
         userService.deleteUser(id);
         return "User deleted successfully!";
     }

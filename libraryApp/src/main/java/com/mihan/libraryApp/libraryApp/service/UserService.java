@@ -1,6 +1,7 @@
 package com.mihan.libraryApp.libraryApp.service;
 
 
+import com.mihan.libraryApp.libraryApp.dto.LoginRequestDTO;
 import com.mihan.libraryApp.libraryApp.exception.ResourceNotFoundException;
 import com.mihan.libraryApp.libraryApp.exception.UserAlreadyExistsException;
 import com.mihan.libraryApp.libraryApp.model.Book;
@@ -9,10 +10,16 @@ import com.mihan.libraryApp.libraryApp.model.User;
 import com.mihan.libraryApp.libraryApp.repository.BookRepository;
 import com.mihan.libraryApp.libraryApp.repository.BorrowingRecordsRepository;
 import com.mihan.libraryApp.libraryApp.repository.UserRepository;
+import com.mihan.libraryApp.libraryApp.util.JwtUtil;
 import jakarta.transaction.Transactional;
+import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.net.Authenticator;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,14 +32,24 @@ public class UserService {
 
     private final BookRepository bookRepository;
 
+    private PasswordEncoder passwordEncoder;
+    @Autowired
+    private AuthenticationManager authenticationManager;
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Autowired
-    public UserService(UserRepository userRepository, BorrowingRecordsRepository borrowingRecordsRepository, BookRepository bookRepository) {
-        this.userRepository = userRepository;
-        this.borrowingRecordsRepository = borrowingRecordsRepository;
+    public UserService(PasswordEncoder passwordEncoder, BookRepository bookRepository, BorrowingRecordsRepository borrowingRecordsRepository, UserRepository userRepository) {
+        this.passwordEncoder = passwordEncoder;
         this.bookRepository = bookRepository;
+        this.borrowingRecordsRepository = borrowingRecordsRepository;
+        this.userRepository = userRepository;
     }
 
+    public String authenticate(LoginRequestDTO loginRequest) {
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+
+   }
 
     public List<User> getAllUsers() {
         return userRepository.findAll();
@@ -42,6 +59,9 @@ public class UserService {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new UserAlreadyExistsException("User with email " + user.getEmail() + " already exists.");
         }
+        String hashedPassword = passwordEncoder.encode(user.getPassword());
+        user.setPassword(hashedPassword);
+
         return userRepository.save(user);
 
     }
@@ -49,7 +69,7 @@ public class UserService {
     public Optional<User> logInUser(String email, String password) {
         Optional<User> user = userRepository.findByEmail(email);
 
-        if (user.isPresent() && user.get().getPassword().equals((password))) {
+        if (user.isPresent() && passwordEncoder.matches(password, user.get().getPassword())) {
             return user;
         }
         return Optional.empty();
@@ -89,6 +109,7 @@ public class UserService {
 
     @Transactional
     public void deleteUser(Long id) {
+        borrowingRecordsRepository.deleteById(id);
         userRepository.deleteById(id);
     }
 }
